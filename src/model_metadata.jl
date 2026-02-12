@@ -42,6 +42,8 @@ const MODEL_METADATA = Dict(
         "description" => "The Earth Gravitational Model 2008 (EGM2008) is a high-resolution model of Earth's gravitational field, providing coefficients up to degree and order 2190. It is based on satellite data, terrestrial measurements, and altimetry, and is widely used for geodetic and geophysical applications.",
         "provider" => "National Geo-Spatial Intelligence Agency (NGA) and the National Aeronautics and Space Administration (NASA)",
         "license" => "Public Domain",
+        "citation" => "Pavlis, N. K., Holmes, S. A., Kenyon, S. C., & Factor, J. K. (2012). The development and evaluation of the Earth Gravitational Model 2008 (EGM2008). Journal of Geophysical Research: Solid Earth, 117(B4). https://doi.org/10.1029/2011jb008916
+",
         "note" => "",
     ),
     "EGM96" => Dict(
@@ -62,6 +64,7 @@ const MODEL_METADATA = Dict(
         "description" => "The Earth Gravitational Model 1996 (EGM96) is a widely used model of Earth's gravitational field, providing coefficients up to degree and order 360. It is based on satellite data, terrestrial measurements, and altimetry, and has been used for various geodetic and geophysical applications.",
         "provider" => "National Geo-Spatial Intelligence Agency (NGA) and the National Aeronautics and Space Administration (NASA)",
         "license" => "Public Domain",
+        "citation" => "Lemoine, F. G., et al. (1998), The development of the joint NASA GSFC and NIMA geopotential model EGM96 https://ntrs.nasa.gov/citations/19980218814",
         "note" => "EGM96 is an older model and has been superseded by EGM2008, which provides higher resolution and improved accuracy. However, EGM96 is still used in some applications and serves as a reference for comparing newer models.",
     ),
     "GRGM1200A" => Dict(
@@ -81,6 +84,7 @@ const MODEL_METADATA = Dict(
         "description" => "The Grail Gravitational Model 1200A (GRGM1200A) is a high-resolution model of the Moon's gravitational field, providing coefficients up to degree and order 1200. It is based on data from the Gravity Recovery and Interior Laboratory (GRAIL) mission, which mapped the lunar gravity field with unprecedented precision.",
         "provider" => "NASA Jet Propulsion Laboratory (JPL)",
         "license" => "Public Domain",
+        "citation" => "Goossens, S., Sabaka, T. J., Wieczorek, M. A., Neumann, G. A., Mazarico, E., Lemoine, F. G., Nicholas, J. B., Smith, D. E., & Zuber, M. T. (2020). High‐Resolution Gravity Field Models from GRAIL Data and Implications for Models of the Density Structure of the Moon’s Crust. Journal of Geophysical Research: Planets, 125(2). https://doi.org/10.1029/2019je006086",
         "note" => "",
     ),
     "GMM3" => Dict(
@@ -100,6 +104,7 @@ const MODEL_METADATA = Dict(
         "description" => "The Mars Global Gravitational Model 3 (GMM-3) is a model of Mars' gravitational field, providing coefficients up to degree and order 120. It is based on data from the Mars Global Surveyor (MGS) mission, which mapped the Martian gravity field and provided insights into the planet's interior structure.",
         "provider" => "NASA Jet Propulsion Laboratory (JPL)",
         "license" => "Public Domain",
+        "citation" => "Genova, A., Goossens, S., Lemoine, F. G., Mazarico, E., Neumann, G. A., Smith, D. E., & Zuber, M. T. (2016). Seasonal and static gravity field of Mars from MGS, Mars Odyssey and MRO radio science. Icarus, 272, 228–245. https://doi.org/10.1016/j.icarus.2016.02.050",
         "note" => "Time-varying zonal coefficients (C₂₀, C₃₀) due to seasonal CO₂ ice cap variations are NOT included in this static field artifact.",
     ),
 )

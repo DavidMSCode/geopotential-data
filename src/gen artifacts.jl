@@ -181,8 +181,8 @@ Binary format:
   - Int32: m_max
   - Float64: gravitational_parameter (GM)
   - Float64: reference_radius
-  - Float64 array: C coefficients in Julia column-major order
-  - Float64 array: S coefficients in Julia column-major order
+  - Float64 array (n elements): C coefficients in Julia column-major order, where n = (l_max+1) * (m_max+1)
+  - Float64 array (n elements): S coefficients in Julia column-major order, where n = (l_max+1) * (m_max+1)
 """
 function write_binary_coefficients(binfile::AbstractString, l_max::Int, m_max::Int, 
                                    C::Matrix{Float64}, S::Matrix{Float64},
@@ -250,11 +250,16 @@ function write_metadata_file(metafile::AbstractString, model_id::AbstractString)
         println(io, "Description:")
         println(io, "  $(meta["description"])")
         println(io, "")
+        println(io, "Citation:")
+        println(io, "  $(meta["citation"])")
+        println(io, "")
         println(io, "Source URL: $(meta["source_url"])")
         println(io, "")
         println(io, "Binary Format:")
         println(io, "  - 4 bytes: Int32 l_max")
         println(io, "  - 4 bytes: Int32 m_max")
+        println(io, "  - 8 bytes: Float64 Gravitational Parameter (GM)")
+        println(io, "  - 8 bytes: Float64 Reference Radius")
         println(io, "  - (l_max+1)*(m_max+1)*8 bytes: C coefficients (Float64, column-major)")
         println(io, "  - (l_max+1)*(m_max+1)*8 bytes: S coefficients (Float64, column-major)")
         println(io, "  Endianness: Little-endian")
