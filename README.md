@@ -1,5 +1,6 @@
 # Geopotential Artifacts Generator
 
+Artifact repository for Geopotential.jl 
 Generate optimized binary artifacts from geopotential coefficient text files.
 
 ## Quick Start

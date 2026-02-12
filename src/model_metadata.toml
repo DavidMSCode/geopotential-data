@@ -75,7 +75,7 @@ coeff_start_line = 2
 [GMM3]
 name = "GMM3"
 body = "Mars"
-full_name = "Mars Global Gravitational Model 3 (GMM-3) Tide Free - Static Field Only"
+full_name = "Goddard Mars Model 3 (GMM-3) Tide Free - Static Field Only"
 source_url = "https://pds-geosciences.wustl.edu/mro/mro-m-rss-5-sdp-v1/mrors_1xxx/data/shadr/gmm3_120_sha.tab"
 distributor = "Planetary Geodesy Data Archive (PGDA)"
 gravitational_parameter = 4.282837362e13
@@ -87,7 +87,7 @@ normalized = true
 altimetry_data = false
 ground_data = false
 satellite_data = true
-description = "The Mars Global Gravitational Model 3 (GMM-3) is a model of Mars' gravitational field, providing coefficients up to degree and order 120. It is based on data from the Mars Global Surveyor (MGS) mission, which mapped the Martian gravity field and provided insights into the planet's interior structure."
+description = "The Goddard Mars Model 3 (GMM-3) is a model of Mars' gravitational field, providing coefficients up to degree and order 120. It is based on data from the Mars Global Surveyor (MGS) mission, which mapped the Martian gravity field and provided insights into the planet's interior structure."
 provider = "NASA Jet Propulsion Laboratory (JPL)"
 license = "Public Domain"
 citation = "Genova, A., Goossens, S., Lemoine, F. G., Mazarico, E., Neumann, G. A., Smith, D. E., & Zuber, M. T. (2016). Seasonal and static gravity field of Mars from MGS, Mars Odyssey and MRO radio science. Icarus, 272, 228–245. https://doi.org/10.1016/j.icarus.2016.02.050"
