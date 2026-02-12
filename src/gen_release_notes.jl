@@ -13,7 +13,7 @@ function generate_release_notes(output_file::String="")
 
 """
     
-    # Group models by planet
+    # Group models by body
     earth_models = ["EGM96", "EGM2008"]
     moon_models = ["GRGM1200A"]
     mars_models = ["GMM3"]
@@ -69,4 +69,7 @@ end
 if abspath(PROGRAM_FILE) == @__FILE__
     output = isempty(ARGS) ? "/tmp/release_notes.txt" : ARGS[1]
     generate_release_notes(output)
+else
+    println("Usage: julia --project src/gen_release_notes.jl [output_file]")
+    println("If no output_file is provided, notes will be written to /tmp/release_notes.txt")
 end

@@ -226,7 +226,7 @@ end
 
 Write metadata text file for the model artifact.
 """
-function write_metadata_file(metafile::AbstractString, model_id::AbstractString)
+function write_metadata_file(metafile::AbstractString, model_id::AbstractString, bin_sha256::AbstractString="")
     meta = MODEL_METADATA[model_id]
     
     open(metafile, "w") do io
@@ -254,6 +254,10 @@ function write_metadata_file(metafile::AbstractString, model_id::AbstractString)
         println(io, "  $(meta["citation"])")
         println(io, "")
         println(io, "Source URL: $(meta["source_url"])")
+        if !isempty(bin_sha256)
+            println(io, "")
+            println(io, "Binary SHA256: $bin_sha256")
+        end
         println(io, "")
         println(io, "Binary Format:")
         println(io, "  - 4 bytes: Int32 l_max")
@@ -347,11 +351,14 @@ function generate_model_artifact(model_id::AbstractString, coeff_file::AbstractS
     bin_size = filesize(binfile)
     println("✓ ($(round(bin_size/1024^2, digits=2)) MB)")
     
+    # Compute binary checksum (for metadata)
+    sha256_bin = bytes2hex(open(sha256, binfile))
+
     # Write metadata
     metafile = joinpath(binary_dir, "$(model_id)_metadata.txt")
     print("Writing metadata... ")
     flush(stdout)
-    write_metadata_file(metafile, model_id)
+    write_metadata_file(metafile, model_id, sha256_bin)
     println("✓")
     
     # Create tarball

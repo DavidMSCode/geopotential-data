@@ -13,7 +13,29 @@ Examples:
 """
 
 # Load the generation functions
+using Downloads
+
 include("gen artifacts.jl")
+
+function ensure_coeff_file(model_id::String, coeff_file::String)
+    if isfile(coeff_file)
+        return true
+    end
+
+    meta = MODEL_METADATA[model_id]
+    url = meta["source_url"]
+    mkpath(dirname(coeff_file))
+
+    println("⬇️  Downloading $model_id coefficients from: $url")
+    try
+        Downloads.download(url, coeff_file)
+        println("✅ Downloaded to: $coeff_file")
+        return true
+    catch e
+        println("❌ Failed to download $model_id coefficients: $e")
+        return false
+    end
+end
 
 function generate_and_summarize(model_id::String, coeff_file::String, output_dir::String)
     """Generate artifact and print summary"""
@@ -65,8 +87,8 @@ function main()
         coeff_filename = COEFF_FILENAMES[model_id]
         coeff_file = joinpath(coeff_folder, coeff_filename)
         
-        if !isfile(coeff_file)
-            println("⚠️  Skipping $model_id - coefficient file not found: $coeff_file")
+        if !ensure_coeff_file(model_id, coeff_file)
+            println("⚠️  Skipping $model_id - coefficient file unavailable: $coeff_file")
             failed += 1
             continue
         end
