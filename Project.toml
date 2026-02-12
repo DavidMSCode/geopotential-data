@@ -2,7 +2,9 @@ name = "GeopotentialArtifactsEnv"
 
 [deps]
 CodecZlib = "944b1d66-785c-5afd-91f1-9de20f533193"
+JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
 Tar = "a4e569a6-e804-4fa4-b0f3-eef7a1d5b13e"
+TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
 
 [compat]
 julia = "1.10"

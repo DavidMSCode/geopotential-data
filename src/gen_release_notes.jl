@@ -4,48 +4,59 @@
 Generate release notes from model metadata.
 """
 
-include("model_metadata.jl")
+using TOML
+
+const METADATA_FILE = joinpath(@__DIR__, "model_metadata.toml")
+const MODELS_TOML = TOML.parsefile(METADATA_FILE)
+
+# Convert TOML to metadata dicts
+const MODEL_METADATA = Dict(
+    model_id => Dict(String(k) => v for (k, v) in pairs(section))
+    for (model_id, section) in MODELS_TOML
+)
 
 function generate_release_notes(output_file::String="")
     notes = """Initial release with geopotential coefficient artifacts for Earth (EGM96, EGM2008), Moon (GRGM1200A), and Mars (GMM3).
 
 ## Models & Citations
+The following models are included as binary files in this release:
 
 """
     
     # Group models by body
-    earth_models = ["EGM96", "EGM2008"]
-    moon_models = ["GRGM1200A"]
-    mars_models = ["GMM3"]
-    
-    # Earth models
-    notes *= "**Earth Models:**\n\n"
-    for model_id in earth_models
+    models_by_body = Dict{String, Vector{String}}()
+    for model_id in sort(collect(keys(MODEL_METADATA)))
         meta = MODEL_METADATA[model_id]
-        notes *= "- **$(meta["name"])** (degree/order $(meta["l_max"]))\n"
-        notes *= "  $(meta["citation"])\n\n"
+        body = meta["body"]
+        if !haskey(models_by_body, body)
+            models_by_body[body] = []
+        end
+        push!(models_by_body[body], model_id)
     end
     
-    # Moon models
-    notes *= "**Moon Model:**\n\n"
-    for model_id in moon_models
-        meta = MODEL_METADATA[model_id]
-        notes *= "- **$(meta["name"])** (degree/order $(meta["l_max"]))\n"
-        notes *= "  $(meta["citation"])\n\n"
-    end
-    
-    # Mars models
-    notes *= "**Mars Model:**\n\n"
-    for model_id in mars_models
-        meta = MODEL_METADATA[model_id]
-        notes *= "- **$(meta["name"])** (degree/order $(meta["l_max"]))\n"
-        notes *= "  $(meta["citation"])\n\n"
+    # Generate sections for each body (sorted by body name)
+    for body in sort(collect(keys(models_by_body)))
+        model_ids = models_by_body[body]
+        
+        # Format heading
+        if length(model_ids) == 1
+            notes *= "**$body Model:**\n\n"
+        else
+            notes *= "**$body Models:**\n\n"
+        end
+        
+        # List models for this body
+        for model_id in sort(model_ids)
+            meta = MODEL_METADATA[model_id]
+            notes *= "- **$(meta["name"])** (degree/order $(meta["l_max"]))\n"
+            notes *= "  $(meta["citation"])\n\n"
+        end
     end
     
     # Binary format section
     notes *= """## Binary Format
 
-Each artifact includes:
+Each bin includes:
 - Int32: l_max (maximum degree)
 - Int32: m_max (maximum order)
 - Float64: Gravitational parameter (GM)
@@ -54,6 +65,8 @@ Each artifact includes:
 - Float64[(l_max+1)*(m_max+1)]: S coefficients in column-major order
 
 All coefficients are normalized and stored in column-major order for efficient loading with mmap.
+
+In addition an index file (models.json) and a metadata file (\\<model\\>_metadata.json) are included with detailed information about each model.
 """
     
     if !isempty(output_file)

@@ -8,7 +8,7 @@ To generate artifact tarballs from SHG coefficient files a few steps are require
     - GMM3
 
 NOTE: This script generates STATIC field artifacts only. Some models (e.g., GMM-3 for Mars)
-include time-varying zonal coefficients (C₂₀, C₃₀) due to seasonal CO₂ ice cap variations.
+include time-varying zonal coefficients (C20, C30) due to seasonal CO2 ice cap variations.
 These time-varying components are NOT included in the generated binaries and must be
 handled separately if needed.
     
@@ -25,18 +25,43 @@ handled separately if needed.
         - description
         - provider
         - license
+        - citation
+        - note (if any)
 
 3. Write the data to a binary file in a format that can be read efficiently by the package. The current format is:
   - 4 bytes: Int32 l_max
   - 4 bytes: Int32 m_max
+  - 8 bytes: Float64 Gravitational Parameter (GM)
+  - 8 bytes: Float64 Reference Radius
   - (l_max + 1) * (m_max + 1) * 8 bytes: C coefficients as Float64, in C++ order (l outer, m inner)
   - (l_max + 1) * (m_max + 1) * 8 bytes: S coefficients as Float64, in C++ order (l outer, m inner)
 
-4. Create a tarball containing the binary file and a manifest with metadata.
+4. Save binaries and metadata into a shared bin folder.
+5. Create a single tarball artifact containing the entire bin folder.
  =#
 
-# Load model metadata from separate file
-include("model_metadata.jl")
+# Load model metadata from TOML file
+using TOML
+using JSON
+
+const METADATA_FILE = joinpath(@__DIR__, "model_metadata.toml")
+const MODELS_TOML = TOML.parsefile(METADATA_FILE)
+
+# Convert TOML to metadata dicts
+const MODEL_METADATA = Dict(
+    model_id => Dict(String(k) => v for (k, v) in pairs(section))
+    for (model_id, section) in MODELS_TOML
+)
+
+const MODEL_COEFF_START_LINE = Dict(
+    model_id => MODEL_METADATA[model_id]["coeff_start_line"]
+    for model_id in keys(MODEL_METADATA)
+)
+
+const COEFF_FILENAMES = Dict(
+    model_id => MODEL_METADATA[model_id]["coeff_filename"]
+    for model_id in keys(MODEL_METADATA)
+)
 
 # Load required packages
 using Mmap
@@ -224,78 +249,107 @@ end
 """
     write_metadata_file(metafile, model_id)
 
-Write metadata text file for the model artifact.
+Write metadata JSON file for the model artifact.
 """
 function write_metadata_file(metafile::AbstractString, model_id::AbstractString, bin_sha256::AbstractString="")
     meta = MODEL_METADATA[model_id]
     
+    # Build metadata structure for JSON
+    metadata = Dict(
+        "id" => model_id,
+        "name" => meta["name"],
+        "body" => meta["body"],
+        "full_name" => meta["full_name"],
+        "provider" => meta["provider"],
+        "distributor" => meta["distributor"],
+        "license" => meta["license"],
+        "source_url" => meta["source_url"],
+        "gravitational_parameter" => Dict(
+            "value" => meta["gravitational_parameter"],
+            "units" => meta["units"]
+        ),
+        "reference_radius" => Dict(
+            "value" => meta["reference_radius"],
+            "units" => split(meta["units"])[1]
+        ),
+        "degree" => Dict(
+            "l_max" => meta["l_max"],
+            "m_max" => meta["m_max"]
+        ),
+        "normalized" => meta["normalized"],
+        "data_sources" => Dict(
+            "altimetry" => meta["altimetry_data"],
+            "ground_measurements" => meta["ground_data"],
+            "satellite_tracking" => meta["satellite_data"]
+        ),
+        "description" => meta["description"],
+        "citation" => meta["citation"]
+    )
+    
+    if !isempty(bin_sha256)
+        metadata["binary_sha256"] = bin_sha256
+    end
+    
+    if !isempty(meta["note"])
+        metadata["note"] = meta["note"]
+    end
+    
+    metadata["generated"] = string(Dates.now())
+    
+    # Write as JSON
     open(metafile, "w") do io
-        println(io, "Model: $(meta["full_name"])")
-        println(io, "ID: $(meta["name"])")
-        println(io, "Provider: $(meta["provider"])")
-        println(io, "Distributor: $(meta["distributor"])")
-        println(io, "License: $(meta["license"])")
-        println(io, "")
-        println(io, "Gravitational Parameter (GM): $(meta["gravitational_parameter"]) $(meta["units"])²")
-        println(io, "Reference Radius: $(meta["reference_radius"]) $(split(meta["units"])[1])")
-        println(io, "Max Degree (l_max): $(meta["l_max"])")
-        println(io, "Max Order (m_max): $(meta["m_max"])")
-        println(io, "Normalized: $(meta["normalized"])")
-        println(io, "")
-        println(io, "Data Sources:")
-        println(io, "  Altimetry: $(meta["altimetry_data"])")
-        println(io, "  Ground measurements: $(meta["ground_data"])")
-        println(io, "  Satellite tracking: $(meta["satellite_data"])")
-        println(io, "")
-        println(io, "Description:")
-        println(io, "  $(meta["description"])")
-        println(io, "")
-        println(io, "Citation:")
-        println(io, "  $(meta["citation"])")
-        println(io, "")
-        println(io, "Source URL: $(meta["source_url"])")
-        if !isempty(bin_sha256)
-            println(io, "")
-            println(io, "Binary SHA256: $bin_sha256")
-        end
-        println(io, "")
-        println(io, "Binary Format:")
-        println(io, "  - 4 bytes: Int32 l_max")
-        println(io, "  - 4 bytes: Int32 m_max")
-        println(io, "  - 8 bytes: Float64 Gravitational Parameter (GM)")
-        println(io, "  - 8 bytes: Float64 Reference Radius")
-        println(io, "  - (l_max+1)*(m_max+1)*8 bytes: C coefficients (Float64, column-major)")
-        println(io, "  - (l_max+1)*(m_max+1)*8 bytes: S coefficients (Float64, column-major)")
-        println(io, "  Endianness: Little-endian")
-        println(io, "  Index Convention: C[l+1, m+1], S[l+1, m+1] (1-based, Julia)")
-        println(io, "")
-        if !isempty(meta["note"])
-            println(io, "Note: $(meta["note"])")
-            println(io, "")
-        end
-        println(io, "Generated: $(Dates.now())")
+        JSON.print(io, metadata, 2)
     end
     
     return metafile
 end
 
 """
-    create_artifact_tarball(model_id, binfile, metafile, output_dir)
+    write_models_index(output_file)
 
-Create compressed tarball containing binary coefficient file and metadata.
+Write a simple JSON array listing available model IDs.
+"""
+function write_models_index(output_file::AbstractString)
+    models = sort(collect(keys(MODEL_METADATA)))
+
+    open(output_file, "w") do io
+        println(io, "[")
+        for (i, model_id) in enumerate(models)
+            comma = i < length(models) ? "," : ""
+            println(io, "  \"$(model_id)\"$comma")
+        end
+        println(io, "]")
+    end
+
+    return output_file
+end
+
+"""
+    create_bundle_artifact(bin_dir, output_dir; bundle_name="geopotential_bins")
+
+Create a single compressed tarball containing the entire bin folder.
 Returns path to the tarball.
 """
-function create_artifact_tarball(model_id::AbstractString, binfile::AbstractString, 
-                                 metafile::AbstractString, output_dir::AbstractString)
+function create_bundle_artifact(bin_dir::AbstractString, output_dir::AbstractString; 
+                                bundle_name::AbstractString="geopotential_bins")
     mkpath(output_dir)
     
-    # Create temporary directory with artifact contents
+    if !isdir(bin_dir)
+        error("Bin directory not found: $bin_dir")
+    end
+
+    # Stage a bin/ folder so the tarball preserves the directory name
     temp_artifact = mktempdir()
-    cp(binfile, joinpath(temp_artifact, "$(model_id).bin"))
-    cp(metafile, joinpath(temp_artifact, "metadata.txt"))
+    temp_bin = joinpath(temp_artifact, "bin")
+    mkpath(temp_bin)
+
+    for path in readdir(bin_dir; join=true)
+        isfile(path) || continue
+        cp(path, joinpath(temp_bin, basename(path)); force=true)
+    end
     
     # Create compressed tarball
-    tarball = joinpath(output_dir, "$(model_id).tar.gz")
+    tarball = joinpath(output_dir, "$(bundle_name).tar.gz")
     open(tarball, "w") do io
         stream = GzipCompressorStream(io)
         Tar.create(temp_artifact, stream)
@@ -315,7 +369,7 @@ Steps:
 2. Convert to matrices
 3. Write binary file
 4. Create metadata file
-5. Package into tarball
+5. Package the bin folder into a single tarball (handled separately)
 
 Returns Dict with file paths and checksums.
 """
@@ -329,13 +383,13 @@ function generate_model_artifact(model_id::AbstractString, coeff_file::AbstractS
     print("Reading coefficient file... ")
     flush(stdout)
     coeffs = read_coeff_file(model_id, coeff_file)
-    println("✓ ($(length(coeffs)) coefficients)")
+    println("($(length(coeffs)) coefficients)")
     
     # Convert to matrices
     print("Converting to matrices... ")
     flush(stdout)
     l_max, m_max, C, S = coeffs_to_matrices(coeffs)
-    println("✓ (l_max=$l_max, m_max=$m_max)")
+    println("(l_max=$l_max, m_max=$m_max)")
     
     # Get gravitational parameter and reference radius from metadata
     meta = MODEL_METADATA[model_id]
@@ -343,55 +397,41 @@ function generate_model_artifact(model_id::AbstractString, coeff_file::AbstractS
     ref_rad = meta["reference_radius"]
     
     # Write binary file
-    binary_dir = joinpath(output_dir, "binaries")
+    binary_dir = joinpath(output_dir, "bin")
     binfile = joinpath(binary_dir, "$(model_id).bin")
     print("Writing binary file... ")
     flush(stdout)
     write_binary_coefficients(binfile, l_max, m_max, C, S, gm, ref_rad)
     bin_size = filesize(binfile)
-    println("✓ ($(round(bin_size/1024^2, digits=2)) MB)")
+    println("($(round(bin_size/1024^2, digits=2)) MB)")
     
     # Compute binary checksum (for metadata)
     sha256_bin = bytes2hex(open(sha256, binfile))
 
     # Write metadata
-    metafile = joinpath(binary_dir, "$(model_id)_metadata.txt")
+    metafile = joinpath(binary_dir, "$(model_id)_metadata.json")
     print("Writing metadata... ")
     flush(stdout)
     write_metadata_file(metafile, model_id, sha256_bin)
-    println("✓")
+    println("done")
     
-    # Create tarball
-    tarball_dir = joinpath(output_dir, "tarballs")
-    print("Creating tarball... ")
-    flush(stdout)
-    tarball = create_artifact_tarball(model_id, binfile, metafile, tarball_dir)
-    tar_size = filesize(tarball)
-    println("✓ ($(round(tar_size/1024^2, digits=2)) MB, $(round((1-tar_size/bin_size)*100, digits=1))% compression)")
-    
-    # Compute checksums
-    print("🔐 Computing checksums... ")
+    # Compute checksum
+    print("Computing checksum... ")
     flush(stdout)
     sha256_bin = bytes2hex(open(sha256, binfile))
-    sha256_tar = bytes2hex(open(sha256, tarball))
-    println("✓")
+    println("done")
     
     println("\nArtifact generation complete")
     println("   Binary:  $binfile")
-    println("   Tarball: $tarball")
-    println("\nSHA256 checksums:")
+    println("\nSHA256 checksum:")
     println("   Binary:  $sha256_bin")
-    println("   Tarball: $sha256_tar")
     
     return Dict(
         "model_id" => model_id,
         "l_max" => l_max,
         "m_max" => m_max,
         "binfile" => binfile,
-        "tarball" => tarball,
         "bin_size" => bin_size,
-        "tar_size" => tar_size,
-        "sha256_bin" => sha256_bin,
-        "sha256_tar" => sha256_tar
+        "sha256_bin" => sha256_bin
     )
 end

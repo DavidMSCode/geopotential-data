@@ -26,13 +26,13 @@ function ensure_coeff_file(model_id::String, coeff_file::String)
     url = meta["source_url"]
     mkpath(dirname(coeff_file))
 
-    println("⬇️  Downloading $model_id coefficients from: $url")
+    println("Downloading $model_id coefficients from: $url")
     try
         Downloads.download(url, coeff_file)
-        println("✅ Downloaded to: $coeff_file")
+        println("Downloaded to: $coeff_file")
         return true
     catch e
-        println("❌ Failed to download $model_id coefficients: $e")
+        println("Failed to download $model_id coefficients: $e")
         return false
     end
 end
@@ -47,9 +47,7 @@ function generate_and_summarize(model_id::String, coeff_file::String, output_dir
     println("Model: $(result["model_id"])")
     println("Degree: l_max=$(result["l_max"]), m_max=$(result["m_max"])")
     println("Binary size: $(round(result["bin_size"]/1024^2, digits=2)) MB")
-    println("Tarball size: $(round(result["tar_size"]/1024^2, digits=2)) MB")
-    println("Compression: $(round((1 - result["tar_size"]/result["bin_size"])*100, digits=1))%")
-    println("✅ Success!")
+    println("Success!")
 end
 
 function main()
@@ -79,7 +77,7 @@ function main()
     
     for model_id in sort(models_to_generate)
         if !haskey(MODEL_METADATA, model_id)
-            println("❌ Unknown model: $model_id")
+            println("Unknown model: $model_id")
             failed += 1
             continue
         end
@@ -88,7 +86,7 @@ function main()
         coeff_file = joinpath(coeff_folder, coeff_filename)
         
         if !ensure_coeff_file(model_id, coeff_file)
-            println("⚠️  Skipping $model_id - coefficient file unavailable: $coeff_file")
+            println("Skipping $model_id - coefficient file unavailable: $coeff_file")
             failed += 1
             continue
         end
@@ -97,11 +95,39 @@ function main()
             generate_and_summarize(model_id, coeff_file, output_dir)
             successful += 1
         catch e
-            println("❌ Error generating $model_id: $e")
+            println("Error generating $model_id: $e")
             failed += 1
         end
     end
     
+    # Create a single bundle artifact tarball
+    if successful > 0
+        bin_dir = joinpath(output_dir, "bin")
+        tarball_dir = joinpath(output_dir, "tarballs")
+        models_index = joinpath(bin_dir, "models.json")
+
+        println("\n" * "="^70)
+        println("Writing models index")
+        println("="^70)
+        write_models_index(models_index)
+        println("Models index: $models_index")
+
+        println("\n" * "="^70)
+        println("Creating bundle artifact tarball")
+        println("="^70)
+        tarball = create_bundle_artifact(bin_dir, tarball_dir)
+        tar_size = filesize(tarball)
+
+        total_bin_size = sum(filesize(path) for path in readdir(bin_dir; join=true) if isfile(path))
+        compression = total_bin_size > 0 ? (1 - tar_size / total_bin_size) * 100 : 0.0
+        sha256_tar = bytes2hex(open(sha256, tarball))
+
+        println("Bundle tarball: $tarball")
+        println("Tarball size: $(round(tar_size/1024^2, digits=2)) MB")
+        println("Compression: $(round(compression, digits=1))%")
+        println("SHA256: $sha256_tar")
+    end
+
     # Final summary
     if model_arg == "all"
         println("\n" * "="^70)
