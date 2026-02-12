@@ -33,4 +33,4 @@ Each bin includes:
 
 All coefficients are normalized and stored in column-major order for efficient loading with mmap.
 
-In addition an index file (models.json) and a metadata file (<model>_metadata.txt) are included with detailed information about each model.
+In addition an index file (models.json) and a metadata file (\<model\>_metadata.json) are included with detailed information about each model.
